@@ -220,6 +220,28 @@ index e13897a..40bb2e6 100644
                      iconButton("arrow.up.forward.app") {       // hand off to Infuse / VLC / Share
                          hideTask?.cancel()
                          showExternalChooser = true
+diff --git a/app/Sources/StremioWebView.swift b/app/Sources/StremioWebView.swift
+index d830b37..640d247 100644
+--- a/app/Sources/StremioWebView.swift
++++ b/app/Sources/StremioWebView.swift
+@@ -129,12 +129,13 @@ struct StremioWebView: UIViewRepresentable {
+             onPlay(CapturedStream(url: url, title: title, resumeSeconds: max(0, resumeMs / 1000), hasNext: hasNext))
+         }
+ 
+-        /// Create a torrent on the embedded streaming server, then play its file in libmpv.
+-        /// libmpv reaches http://127.0.0.1:11470 directly (not a web context, no mixed-content,
+-        /// which is why this can't be done from the WKWebView's JS).
++        /// Create a torrent on the streaming server, then play its file in libmpv.
++        /// Uses the network streaming server (the "casting server", e.g. a Stremio desktop app on
++        /// a PC) so the downloading and any processing happen there, not on the phone. libmpv
++        /// reaches it directly (not a web context, no mixed-content).
+         private func handleTorrent(infoHash: String, fileIdx: Int?, sources: [String]) {
+             let ih = infoHash.lowercased()
+-            let base = "http://127.0.0.1:11470"
++            let base = CastManager.serverBase
+             var srcs = sources
+             srcs.append("dht:\(ih)")
+             if let createURL = URL(string: "\(base)/\(ih)/create"),
 diff --git a/app/Sources/StremioXApp.swift b/app/Sources/StremioXApp.swift
 index 37a6c5f..c39b745 100644
 --- a/app/Sources/StremioXApp.swift
