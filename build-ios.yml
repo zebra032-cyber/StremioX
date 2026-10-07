@@ -17,6 +17,17 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      # Adds Chromecast casting (Google Cast SDK). Upload chromecast.patch to the repo root;
+      # if it's missing, the app builds without casting.
+      - name: Apply Chromecast patch
+        run: |
+          if [ -f chromecast.patch ]; then
+            git apply --whitespace=nowarn chromecast.patch
+            echo "Chromecast patch applied"
+          else
+            echo "::warning::chromecast.patch not found, building without Chromecast support"
+          fi
+
       - name: Select latest Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
