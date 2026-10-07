@@ -1,4 +1,168 @@
-# StremioX
+# StremioX + Chromecast
+
+A fork of [OrigamiSpace/StremioX](https://github.com/OrigamiSpace/StremioX), an unofficial Stremio client for iPhone and iPad. This fork adds **Chromecast casting** and a **GitHub Actions build**, so you can build the app yourself without a Mac.
+
+> **Not affiliated with Stremio, Google or Apple.** This is an experimental community build. Read the rest of this page before installing.
+
+## What's different in this fork
+
+- **Cast to Chromecast.** A TV icon in the player's top bar, plus "Cast to Chromecast" in the "Play in another app" menu, sends the current video to a Chromecast and picks up from where you were.
+- **Works with older Chromecasts.** The Chromecast doesn't play the original file. It pulls a converted stream from a Stremio streaming server on your network (such as the Stremio desktop app on your PC), which converts anything the Chromecast can't handle to H.264 video with stereo AAC audio. If that PC has hardware transcoding turned on (for example NVENC on an NVIDIA card), the conversion runs on its GPU.
+- **Builds in the cloud.** `.github/workflows/build-ios.yml` builds an unsigned `.ipa` on GitHub's free macOS machines. The Chromecast changes live in `chromecast.patch` and are applied during the build, so the upstream source stays untouched and easy to update.
+
+## Requirements
+
+- An iPhone or iPad on iOS 16 or later.
+- A Windows PC or Mac to run **Sideloadly** (for installing the app).
+- A free **Apple ID** to sign the app. A separate, throwaway Apple ID works fine.
+- For casting:
+  - A Chromecast on the same Wi-Fi network.
+  - A Stremio streaming server on the same network, running while you cast. The easiest option is the official [Stremio desktop app](https://www.stremio.com/downloads), which includes one on port `11470`.
+  - Optional but recommended: in the desktop app, go to **Settings → Streaming → Transcoding profile** and choose your GPU (for example `nvenc-win`) so conversion runs on the graphics card instead of the CPU.
+
+## 1. Build the app
+
+You only need to do this once, or again when you want an update.
+
+1. **Fork this repo** to your own GitHub account and keep it **public**, since GitHub's free macOS build time only applies to public repos.
+2. Open the **Actions** tab. If you see *"I understand my workflows, go ahead and enable them"*, click it. Forks start with Actions turned off.
+3. In the left sidebar, click **Build StremioX iOS** → **Run workflow** → **Run workflow**.
+4. Wait for the run to finish with a green tick. It usually takes a few minutes.
+5. Open the finished run, scroll to **Artifacts** at the bottom, and download **StremioX-iOS**.
+6. Unzip it to get `StremioX-iOS.ipa`.
+
+**What the build does:** it applies `chromecast.patch`, downloads Stremio's official macOS app to extract its streaming server (`server.js`, used unmodified), downloads nodejs-mobile from its official GitHub release, then compiles the app without signing it. The SHA-256 checksum of the finished `.ipa` is printed in the **Package .ipa** step's log.
+
+## 2. Install it on your iPhone
+
+1. Install [Sideloadly](https://sideloadly.io) on your PC. On Windows, also install **iTunes** and **iCloud** from Apple's website. The Microsoft Store versions don't work with Sideloadly.
+2. Plug your iPhone into the PC with a cable. If the phone asks, tap **Trust This Computer**.
+3. Open Sideloadly and drag `StremioX-iOS.ipa` into it. Your iPhone should appear in the device list.
+4. In the **Apple ID** box, enter the email address you sign in to Apple with, then click **Start**.
+5. Enter your Apple ID password when asked. If you use two-factor authentication, enter the 6-digit code that appears on your Apple device.
+6. When Sideloadly finishes, on the iPhone go to **Settings → General → VPN & Device Management**, tap your Apple ID, and tap **Trust**.
+7. If iOS asks for **Developer Mode**, turn it on under **Settings → Privacy & Security → Developer Mode**. The phone will restart.
+
+### Renewing every 7 days
+
+Apps signed with a free Apple ID stop opening after **7 days**. To renew, plug the phone back in and run Sideloadly again with the same `.ipa` and the **same Apple ID**. Your sign-in and settings are kept. If you use a different Apple ID, iOS treats it as a new app and you start fresh.
+
+## 3. First launch and setup
+
+1. Open StremioX. When iOS asks to find devices on your local network, tap **Allow**. Casting won't work without it.
+2. Sign in with your Stremio account. Add-ons installed on your account sync automatically.
+3. **Set your casting server** (once):
+   - Play anything, tap the player's **share/hand-off icon**, and choose **Set casting server…**
+   - Enter the address of the PC running Stremio, for example `http://192.168.1.50:11470`.
+   - To find your PC's address on Windows, run `ipconfig` in PowerShell and use the **IPv4 Address**.
+   - Tip: set a DHCP reservation for the PC in your router so its address never changes.
+
+## 4. Casting
+
+1. Make sure the Stremio desktop app (or another Stremio streaming server) is running on your PC.
+2. Play something in StremioX.
+3. Tap the **TV icon** in the player's top bar and pick your Chromecast.
+4. Playback pauses on the phone and continues on the TV from the same point. Google's cast controls let you play, pause and seek from the phone.
+
+To confirm the PC is doing the conversion on Windows, open **Task Manager → Performance → GPU** while casting. Activity on the **Video Encode** graph means hardware transcoding is working.
+
+## Troubleshooting
+
+| Problem | Try this |
+| --- | --- |
+| Chromecast doesn't appear in the picker | Check the phone and Chromecast are on the same Wi-Fi network, and that StremioX has Local Network permission (**Settings → Privacy & Security → Local Network**). |
+| Chromecast connects but shows an error or never starts | Check the Stremio desktop app is running and that the casting server address is right. From the phone, open `http://<PC address>:11470/` in Safari: if it doesn't load, allow Stremio through Windows Firewall on **Private** networks. |
+| Stutters or buffers on the TV | Older Chromecasts have weak Wi-Fi. Try moving the router or Chromecast closer, or using the 5 GHz band if both support it. |
+| Some files play on the phone but fail on the TV | Files that are already H.264 are passed through without conversion. 10-bit H.264 (common in anime encodes) can look compatible but fail on older Chromecasts. |
+| App won't open after a week | The 7-day signature has expired. Re-run Sideloadly (see *Renewing every 7 days*). |
+| Build fails in GitHub Actions | Open the red step, copy the end of its log, and check for errors starting with `error:`. |
+
+## Known limitations
+
+- **Casting is experimental.** It has had very little real-world testing so far.
+- **Subtitles aren't sent to the Chromecast yet.**
+- **Casting needs a Stremio server on your network.** The app's own built-in server runs on the phone and isn't reachable by the Chromecast.
+- **No "force conversion" option yet** for files that pass through but fail to play (see Troubleshooting).
+- The app itself follows Stremio's live web interface, so a Stremio website update can occasionally break things. This is an upstream limitation.
+
+## How Chromecast support was added
+
+All the changes are in `chromecast.patch`, which the build applies on top of the unmodified upstream source. It touches five files and adds about 180 lines.
+
+### The approach
+
+An older Chromecast (3rd gen and earlier) can only decode H.264 video with AAC or MP3 audio, and it can't reach the streaming server that runs inside the app on the phone (`127.0.0.1`). So instead of sending the Chromecast the original stream, the app sends it a link to a **Stremio streaming server on the local network**, which converts the video on the fly:
+
+```
+iPhone (StremioX) ──"play this URL"──▶ Chromecast
+                                          │
+                                          ▼  fetches HLS
+                              Stremio server on your PC (:11470)
+                                          │  fetches + transcodes
+                                          ▼
+                                   original stream source
+```
+
+The phone only tells the Chromecast what to play. The video itself goes from the PC to the Chromecast, so the phone's battery and Wi-Fi aren't involved once casting starts.
+
+### The transcoding URL
+
+Stremio's streaming server has an HLS transcoding endpoint, `hlsv2`. The app builds the same request Stremio's own web player makes (see `withStreamingServer.js` in [Stremio/stremio-video](https://github.com/Stremio/stremio-video)), restricted to the codecs an old Chromecast supports:
+
+```
+http://<server>:11470/hlsv2/<random-id>/master.m3u8
+    ?mediaURL=<original stream URL, percent-encoded>
+    &videoCodecs=h264
+    &audioCodecs=aac
+    &audioCodecs=mp3
+    &maxAudioChannels=2
+```
+
+The server checks the source. Anything outside that list (HEVC, VP9, AV1, AC3, DTS, surround audio) is converted. Compatible tracks are passed through, which is why 10-bit H.264 can still slip through and fail.
+
+**Torrent streams** start out pointing at the phone's own server (`http://127.0.0.1:11470/<infoHash>/<fileIdx>`). For those, the app rewrites the address to the PC's server and sends it the same `POST /<infoHash>/create` request the app normally sends to its own server, so the PC starts that torrent itself.
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| `app/Sources/CastManager.swift` | **New.** Sets up the Google Cast SDK with the **Default Media Receiver** (Google's built-in receiver app, so no receiver registration is needed). Builds the `hlsv2` URL, handles torrent rewriting, shows the device picker, loads the media at the current playback position, and opens Google's expanded cast controls. The casting server address is saved in `UserDefaults` (`stremiox.castServer`). |
+| `app/Sources/PlayerScreen.swift` | Adds the **TV icon** to the top bar, plus **Cast to Chromecast** and **Set casting server…** to the "Play in another app" menu. Casting pauses local playback first so the video isn't decoded twice. |
+| `app/Sources/StremioXApp.swift` | Calls `CastManager.setUp()` at launch (iOS only). |
+| `app/Resources/Info-iOS.plist` | Adds `NSBonjourServices` (`_googlecast._tcp` and `_CC1AD845._googlecast._tcp`, the Default Media Receiver's ID) and `NSLocalNetworkUsageDescription`. iOS needs both before an app can discover Chromecasts and reach devices on the local network. |
+| `app/project.yml` | Adds the Google Cast SDK as a Swift package ([SRGSSR/google-cast-sdk](https://github.com/SRGSSR/google-cast-sdk), pinned to `4.8.6`, which wraps Google's official binary) and the `-ObjC` linker flag the SDK requires. |
+
+### Build workflow changes
+
+`.github/workflows/build-ios.yml` follows the upstream build instructions, with these differences:
+
+- **Applies `chromecast.patch`** first, or warns and builds without it if the file is missing.
+- **Extracts `server.js` automatically** from Stremio's official macOS app (downloaded from `dl.strem.io`) instead of requiring you to supply it.
+- **Skips `scripts/build-web.sh`.** The iOS app loads Stremio's live web interface through its built-in relay and never bundles a local build. The script also failed under the latest `pnpm`, whose stricter lockfile check rejects Stremio's own `hls.js` dependency.
+- **Creates an empty `app/Resources/fonts` folder**, which `project.yml` expects but the repo doesn't include. This only affects subtitle fonts for non-Latin scripts.
+- Builds unsigned (`CODE_SIGNING_ALLOWED=NO`) and zips the app into an `.ipa` for Sideloadly to sign.
+
+## Privacy and safety notes
+
+The source code was reviewed before building. In short:
+
+- The app talks to Stremio's own services, your add-ons, your own streaming servers, and `api.theintrodb.org` (for skip-intro timestamps, which receives only the ID of the episode being played).
+- When you cast, the stream link is sent to the casting server you set. Stream links can contain add-on or debrid account keys, so only point it at a server you control.
+- No analytics or tracking are added by this fork.
+
+## Updating
+
+To pull in new upstream StremioX changes, use **Sync fork** on your fork's main page, then run the build again. If the sync changes the files `chromecast.patch` touches, the **Apply Chromecast patch** step may fail and the patch will need updating.
+
+## Credits and license
+
+All credit for StremioX goes to [OrigamiSpace/StremioX](https://github.com/OrigamiSpace/StremioX) and the projects it builds on (see below). Chromecast support uses Google's Cast SDK via [SRGSSR/google-cast-sdk](https://github.com/SRGSSR/google-cast-sdk). This fork stays under the same **GPL-3.0** license as the original.
+
+---
+
+*The original StremioX README follows.*
+
+# StremioX (original README)
 
 Stremio for iPhone, iPad, and Apple TV. An independent, updated client for Apple devices, with a native Apple TV app built on stremio-core.
 
