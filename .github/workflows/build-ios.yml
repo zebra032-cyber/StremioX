@@ -65,8 +65,9 @@ jobs:
           chmod +x scripts/*.sh
           ./scripts/fetch-server-deps.sh
 
-      - name: Build the Stremio web interface
-        run: ./scripts/build-web.sh
+      # No web-interface build step: the iOS app loads Stremio's live web interface
+      # (web.stremio.com) through its built-in relay, and project.yml never bundles a local copy,
+      # so scripts/build-web.sh's output would go unused.
 
       # project.yml references a fonts folder that isn't in the repo; an empty one lets the
       # project generate (only affects subtitle fonts for non-Latin scripts).
