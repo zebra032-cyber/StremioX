@@ -51,7 +51,8 @@ Apps signed with a free Apple ID stop opening after **7 days**. To renew, plug t
 
 1. Open StremioX. When iOS asks to find devices on your local network, tap **Allow**. Casting won't work without it.
 2. Sign in with your Stremio account. Add-ons installed on your account sync automatically.
-3. **Set your casting server** (once):
+3. In Stremio's **Settings → Streaming**, add your PC's server (for example `http://192.168.1.50:11470`) and select it, so streams are handled by the PC. It may show as offline inside the app even when it's working.
+4. **Set your casting server** (once). This is also the server torrent-style streams play from:
    - Play anything, tap the player's **share/hand-off icon**, and choose **Set casting server…**
    - Enter the address of the PC running Stremio, for example `http://192.168.1.50:11470`.
    - To find your PC's address on Windows, run `ipconfig` in PowerShell and use the **IPv4 Address**.
@@ -87,7 +88,7 @@ To confirm the PC is doing the conversion on Windows, open **Task Manager → Pe
 
 ## How Chromecast support was added
 
-All the changes are in `chromecast.patch`, which the build applies on top of the unmodified upstream source. It touches five files and adds about 180 lines.
+All the changes are in `chromecast.patch`, which the build applies on top of the unmodified upstream source. It touches six files and adds about 185 lines.
 
 ### The approach
 
@@ -128,6 +129,7 @@ The server checks the source. Anything outside that list (HEVC, VP9, AV1, AC3, D
 | --- | --- |
 | `app/Sources/CastManager.swift` | **New.** Sets up the Google Cast SDK with the **Default Media Receiver** (Google's built-in receiver app, so no receiver registration is needed). Builds the `hlsv2` URL, handles torrent rewriting, shows the device picker, loads the media at the current playback position, and opens Google's expanded cast controls. The casting server address is saved in `UserDefaults` (`stremiox.castServer`). |
 | `app/Sources/PlayerScreen.swift` | Adds the **TV icon** to the top bar, plus **Cast to Chromecast** and **Set casting server…** to the "Play in another app" menu. Casting pauses local playback first so the video isn't decoded twice. |
+| `app/Sources/StremioWebView.swift` | Torrent-style streams are created on and played from the network streaming server (the casting server) instead of the phone's built-in server, so downloading and processing happen on the PC. |
 | `app/Sources/StremioXApp.swift` | Calls `CastManager.setUp()` at launch (iOS only). |
 | `app/Resources/Info-iOS.plist` | Adds `NSBonjourServices` (`_googlecast._tcp` and `_CC1AD845._googlecast._tcp`, the Default Media Receiver's ID) and `NSLocalNetworkUsageDescription`. iOS needs both before an app can discover Chromecasts and reach devices on the local network. |
 | `app/project.yml` | Adds the Google Cast SDK as a Swift package ([SRGSSR/google-cast-sdk](https://github.com/SRGSSR/google-cast-sdk), pinned to `4.8.6`, which wraps Google's official binary) and the `-ObjC` linker flag the SDK requires. |
